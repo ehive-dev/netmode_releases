@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # netmode Installer/Updater (DietPi / Debian)
 # Main functions:
-# - apt_update_once: führt apt-get update genau einmal aus (non-interactive)
+# - apt_update_once: führt apt-get update genau einmal aus (non-interactive, robust gegen Repo-Warnungen)
 # - need_tools: stellt sicher, dass curl/jq/dpkg/systemctl vorhanden sind
 # - api/get_release_json/pick_deb_from_release: ermittelt das passende .deb aus GitHub Releases (stable/pre, optional tag)
-# - ensure_python_gpiod: Bookworm-fix (Candidate-Check) + Fallback auf python3-libgpiod
+# - ensure_python_gpiod: Bookworm-fix ohne Locale-Parsing (Fallback python3-libgpiod <-> python3-gpiod)
 # - ensure_unit_exists/ensure_defaults_file: systemd Unit + /etc/default non-destructive bereitstellen
 # - wait_service_active: prüft, ob der Dienst aktiv ist
 
@@ -60,7 +60,8 @@ need_root(){
 
 apt_update_once(){
   if [[ "${_APT_UPDATED:-0}" != "1" ]]; then
-    apt-get update
+    # robust: nicht an 3rd-party Repo-Warnungen sterben (z.B. GPG Warnings)
+    apt-get update || true
     _APT_UPDATED=1
   fi
 }
@@ -112,34 +113,40 @@ installed_version(){ dpkg-query -W -f='${Version}\n' "$DPKG_PKG" 2>/dev/null || 
 ensure_python_gpiod(){
   apt_update_once
 
-  # python3-gpiod nur installieren, wenn wirklich ein Candidate existiert (Bookworm oft: (none))
-  local cand
-  cand="$(apt-cache policy python3-gpiod 2>/dev/null | awk -F': ' '/Candidate:/{print $2; exit 0}')"
-  if [[ -n "${cand:-}" && "${cand:-}" != "(none)" ]]; then
-    apt-get install "${APT_INSTALL_OPTS[@]}" python3 python3-gpiod iproute2
+  # Basis-Abhängigkeiten (immer vorhanden auf Debian/DietPi)
+  apt-get install "${APT_INSTALL_OPTS[@]}" python3 iproute2 >/dev/null 2>&1 || true
+
+  # WICHTIG: Kein apt-cache-Parsing (Locale "Kandidat:" vs "Candidate:"), sondern echte Install-Versuche/Fallback.
+  # 1) wenn bereits installiert: ok
+  if dpkg -s python3-libgpiod >/dev/null 2>&1; then
+    apt-get install "${APT_INSTALL_OPTS[@]}" libgpiod2 gpiod >/dev/null 2>&1 || true
+    return 0
+  fi
+  if dpkg -s python3-gpiod >/dev/null 2>&1; then
     return 0
   fi
 
-  # Bookworm-Standard: python3-libgpiod (+ libgpiod2 + gpiod)
-  cand="$(apt-cache policy python3-libgpiod 2>/dev/null | awk -F': ' '/Candidate:/{print $2; exit 0}')"
-  if [[ -n "${cand:-}" && "${cand:-}" != "(none)" ]]; then
-    apt-get install "${APT_INSTALL_OPTS[@]}" python3 python3-libgpiod libgpiod2 gpiod iproute2
+  # 2) Debian Bookworm: python3-libgpiod (+ libgpiod2 + gpiod)
+  set +e
+  apt-get install "${APT_INSTALL_OPTS[@]}" python3-libgpiod libgpiod2 gpiod >/dev/null 2>&1
+  local rc=$?
+  set -e
+  if [[ $rc -eq 0 ]]; then
     return 0
   fi
 
-  err "Kein passendes Paket gefunden: python3-gpiod (Candidate) ODER python3-libgpiod (Candidate)."
-  err "Fix: apt-cache search gpiod | grep python3  (oder Repo/Distribution prüfen)"
+  # 3) ältere/andere Distros: python3-gpiod
+  set +e
+  apt-get install "${APT_INSTALL_OPTS[@]}" python3-gpiod >/dev/null 2>&1
+  rc=$?
+  set -e
+  if [[ $rc -eq 0 ]]; then
+    return 0
+  fi
+
+  err "Kein passendes Paket gefunden: python3-libgpiod ODER python3-gpiod."
+  err "Debug: apt-cache search gpiod | grep -E 'python3|libgpiod'  (oder Sources/Distribution prüfen)"
   exit 1
-}
-
-wait_port(){
-  local port="$1"
-  command -v ss >/dev/null 2>&1 || return 0
-  for _ in {1..60}; do
-    ss -ltn 2>/dev/null | grep -q ":${port} " && return 0
-    sleep 0.5
-  done
-  return 1
 }
 
 wait_service_active(){
