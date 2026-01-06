@@ -1,20 +1,27 @@
 #!/usr/bin/env bash
+# netmode Installer/Updater (DietPi / Debian)
+# Main functions:
+# - apt_update_once: führt apt-get update genau einmal aus (non-interactive)
+# - need_tools: stellt sicher, dass curl/jq/dpkg/systemctl vorhanden sind
+# - api/get_release_json/pick_deb_from_release: ermittelt das passende .deb aus GitHub Releases (stable/pre, optional tag)
+# - ensure_python_gpiod: Bookworm-fix (Candidate-Check) + Fallback auf python3-libgpiod
+# - ensure_unit_exists/ensure_defaults_file: systemd Unit + /etc/default non-destructive bereitstellen
+# - wait_service_active: prüft, ob der Dienst aktiv ist
+
 set -euo pipefail
 umask 022
-
-# netmode Installer/Updater (DietPi / arm64)
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/ehive-dev/netmode_releases/main/install.sh | sudo bash -s -- [--pre|--stable] [--tag vX.Y.Z] [--repo owner/repo]
-#   sudo bash install.sh --pre | --stable | --tag vX.Y.Z | --repo owner/repo
-#
-# Notes:
-# - Installs latest matching .deb asset from GitHub Releases (stable/pre)
-# - Ensures python3 gpiod bindings are installed BEFORE dpkg (avoid "unconfigured" state)
-# - Expects the package to ship systemd unit "netmode.service" (or will create a minimal unit)
 
 APP_NAME="netmode"
 UNIT="${APP_NAME}.service"
 UNIT_BASE="${APP_NAME}"
+
+# Non-interactive APT (keine Rückfragen)
+export DEBIAN_FRONTEND=noninteractive
+APT_INSTALL_OPTS=(
+  -y
+  -o Dpkg::Options::=--force-confdef
+  -o Dpkg::Options::=--force-confold
+)
 
 # Defaults (can be overridden via env or CLI)
 REPO="${REPO:-ehive-dev/netmode_releases}" # releases repo
@@ -45,21 +52,23 @@ warn(){ printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
 err(){  printf '\033[1;31m[✗]\033[0m %s\n' "$*" >&2; }
 
 need_root(){
-  if [[ ${EUID:-$(id -u)} -ne 0 ]]; then err "Bitte als root ausführen (sudo)."; exit 1; fi
+  if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+    err "Bitte als root ausführen (sudo)."
+    exit 1
+  fi
 }
 
 apt_update_once(){
   if [[ "${_APT_UPDATED:-0}" != "1" ]]; then
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -y
+    apt-get update
     _APT_UPDATED=1
   fi
 }
 
 need_tools(){
-  command -v curl >/dev/null || { apt_update_once; apt-get install -y curl; }
-  command -v jq   >/dev/null || { apt_update_once; apt-get install -y jq; }
-  command -v dpkg >/dev/null || { apt_update_once; apt-get install -y dpkg; }
+  command -v curl >/dev/null || { apt_update_once; apt-get install "${APT_INSTALL_OPTS[@]}" curl; }
+  command -v jq   >/dev/null || { apt_update_once; apt-get install "${APT_INSTALL_OPTS[@]}" jq; }
+  command -v dpkg >/dev/null || { apt_update_once; apt-get install "${APT_INSTALL_OPTS[@]}" dpkg; }
   command -v systemctl >/dev/null || { err "systemd/systemctl erforderlich."; exit 1; }
   command -v ss >/dev/null 2>&1 || true
 }
@@ -102,17 +111,23 @@ installed_version(){ dpkg-query -W -f='${Version}\n' "$DPKG_PKG" 2>/dev/null || 
 
 ensure_python_gpiod(){
   apt_update_once
-  # try python3-gpiod first (common)
-  if apt-cache show python3-gpiod >/dev/null 2>&1; then
-    apt-get install -y python3 python3-gpiod iproute2
+
+  # python3-gpiod nur installieren, wenn wirklich ein Candidate existiert (Bookworm oft: (none))
+  local cand
+  cand="$(apt-cache policy python3-gpiod 2>/dev/null | awk -F': ' '/Candidate:/{print $2; exit 0}')"
+  if [[ -n "${cand:-}" && "${cand:-}" != "(none)" ]]; then
+    apt-get install "${APT_INSTALL_OPTS[@]}" python3 python3-gpiod iproute2
     return 0
   fi
-  # some distros use python3-libgpiod
-  if apt-cache show python3-libgpiod >/dev/null 2>&1; then
-    apt-get install -y python3 python3-libgpiod iproute2
+
+  # Bookworm-Standard: python3-libgpiod (+ libgpiod2 + gpiod)
+  cand="$(apt-cache policy python3-libgpiod 2>/dev/null | awk -F': ' '/Candidate:/{print $2; exit 0}')"
+  if [[ -n "${cand:-}" && "${cand:-}" != "(none)" ]]; then
+    apt-get install "${APT_INSTALL_OPTS[@]}" python3 python3-libgpiod libgpiod2 gpiod iproute2
     return 0
   fi
-  err "Kein passendes Paket gefunden: python3-gpiod ODER python3-libgpiod."
+
+  err "Kein passendes Paket gefunden: python3-gpiod (Candidate) ODER python3-libgpiod (Candidate)."
   err "Fix: apt-cache search gpiod | grep python3  (oder Repo/Distribution prüfen)"
   exit 1
 }
@@ -127,7 +142,6 @@ wait_port(){
   return 1
 }
 
-# netmode has no HTTP health; we only validate service is active.
 wait_service_active(){
   local unit="$1"
   for _ in {1..30}; do
@@ -137,7 +151,6 @@ wait_service_active(){
   return 1
 }
 
-# Minimal unit fallback (only if package does NOT ship one)
 ensure_unit_exists(){
   if systemctl list-unit-files | awk '{print $1}' | grep -qx "${UNIT}"; then
     return 0
@@ -199,7 +212,11 @@ if [[ "$ARCH_SYS" != "$ARCH_REQ" ]]; then
 fi
 
 OLD_VER="$(installed_version || true)"
-if [[ -n "$OLD_VER" ]]; then info "Installiert: ${DPKG_PKG} ${OLD_VER}"; else info "Keine bestehende ${DPKG_PKG}-Installation gefunden."; fi
+if [[ -n "$OLD_VER" ]]; then
+  info "Installiert: ${DPKG_PKG} ${OLD_VER}"
+else
+  info "Keine bestehende ${DPKG_PKG}-Installation gefunden."
+fi
 
 # Pre-install runtime deps (avoid dpkg "unconfigured" loop)
 info "Installiere Runtime-Abhängigkeiten (python3 + gpiod bindings + iproute2) ..."
@@ -208,7 +225,6 @@ ensure_python_gpiod
 info "Ermittle Release aus ${REPO} (${CHANNEL}${TAG:+, tag=$TAG}) ..."
 RELEASE_JSON="$(get_release_json || true)"
 
-# Better error for 403/rate limit (do not hide body)
 if [[ -z "${RELEASE_JSON:-}" || "${RELEASE_JSON:-}" == "null" ]]; then
   err "Keine passende Release gefunden oder API-Fehler."
   err "Tipp: export GITHUB_TOKEN=\$(gh auth token)  (bei 403/rate limit/private repo)"
@@ -231,7 +247,6 @@ info "Lade: ${DEB_URL}"
 curl -fL --retry 3 --retry-delay 1 -o "$DEB_FILE" "$DEB_URL"
 dpkg-deb --info "$DEB_FILE" >/dev/null 2>&1 || { err "Ungültiges .deb"; exit 1; }
 
-# Stop service if present
 systemctl stop "$UNIT" >/dev/null 2>&1 || true
 
 info "Installiere Paket ..."
@@ -242,18 +257,14 @@ set -e
 if [[ $RC -ne 0 ]]; then
   warn "dpkg -i scheiterte — versuche apt --fix-broken"
   apt_update_once
-  apt-get -f install -y
+  apt-get -f install "${APT_INSTALL_OPTS[@]}"
   dpkg -i "$DEB_FILE"
 fi
 ok "Installiert: ${DPKG_PKG} ${VER_CLEAN}"
 
-# Ensure /etc/default exists (non-destructive)
 ensure_defaults_file
-
-# Ensure unit exists (fallback only)
 ensure_unit_exists
 
-# Ensure drop-in (state/logs)
 install -d -m 755 "/etc/systemd/system/${UNIT}.d"
 cat >"/etc/systemd/system/${UNIT}.d/10-paths.conf" <<UNITDROP
 [Service]
