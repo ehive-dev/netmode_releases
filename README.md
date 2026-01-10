@@ -22,9 +22,9 @@ Er ist für eHive/OpenArc-Systeme gedacht und läuft als **root**, weil Netzwerk
 Installation über GitHub-Releases per `install.sh`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ehive-dev/netmode-releases/main/install.sh | sudo bash -s -- --stable
+curl -fsSL https://raw.githubusercontent.com/ehive-dev/netmode_releases/main/install.sh | sudo bash -s -- --stable
 
-curl -fsSL https://raw.githubusercontent.com/ehive-dev/netmode-releases/main/install.sh | sudo bash -s -- --pre
+curl -fsSL https://raw.githubusercontent.com/ehive-dev/netmode_releases/main/install.sh | sudo bash -s -- --pre
 
-curl -fsSL https://raw.githubusercontent.com/ehive-dev/netmode-releases/main/install.sh | sudo bash -s -- --tag v0.1.0
+curl -fsSL https://raw.githubusercontent.com/ehive-dev/netmode_releases/main/install.sh | sudo bash -s -- --tag v0.1.0
 
