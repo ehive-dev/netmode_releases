@@ -12,7 +12,7 @@ umask 022
 # Optional: export GITHUB_TOKEN=... (höhere API-Limits/private Repos)
 
 APP_NAME="netmode"
-REPO="${REPO:-ehive-dev/netmode-releases}"  # per --repo überschreibbar
+REPO="${REPO:-ehive-dev/netmode_releases}"  # per --repo überschreibbar
 CHANNEL="stable"    # stable | pre  (fallback jeweils auf das andere, falls leer)
 TAG="${TAG:-}"      # vX.Y.Z (mit v)
 
