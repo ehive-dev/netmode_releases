@@ -4,20 +4,21 @@ umask 022
 
 # netmode Installer/Updater (Debian/Ubuntu)
 # Usage:
-#   sudo bash install.sh                 # neueste STABLE (fällt auf PRE zurück, wenn kein Stable)
-#   sudo bash install.sh --pre           # neueste PRE-RELEASE (fällt auf Stable zurück, wenn kein Pre)
-#   sudo bash install.sh --tag v0.1.1    # bestimmte Version
+#   sudo bash install.sh                 # newest STABLE (fallback to PRE if no stable)
+#   sudo bash install.sh --pre           # newest PRE-RELEASE (fallback to stable if no pre)
+#   sudo bash install.sh --tag v0.1.1    # specific tag
 #   sudo bash install.sh --repo owner/repo
 #
-# Optional: export GITHUB_TOKEN=... (höhere API-Limits/private Repos)
+# Optional:
+#   export GITHUB_TOKEN=...              # higher API limits / private repos
+#   export NETMODE_ASSET_REGEX='^netmode_.*_all\.deb$'   # override asset matching
 
 APP_NAME="netmode"
-REPO="${REPO:-ehive-dev/netmode_releases}"
-CHANNEL="stable"    # stable | pre  (fallback jeweils auf das andere, falls leer)
-TAG="${TAG:-}"      # vX.Y.Z (mit v)
+REPO="${REPO:-ehive-dev/netmode_releases}"   # default repo (underscore!)
+CHANNEL="stable"                              # stable | pre
+TAG="${TAG:-}"                                # vX.Y.Z
 
-# Architektur: netmode ist "all" (Python + systemd), daher keine Arch-Sperre
-# ARCH_REQ="all"
+ASSET_REGEX="${NETMODE_ASSET_REGEX:-^netmode_.*_(all|arm64|amd64)\\.deb$}"
 
 # ---------- CLI-Args ----------
 while [[ $# -gt 0 ]]; do
@@ -53,6 +54,7 @@ need_tools(){
 }
 
 api(){
+  # returns JSON on stdout; non-zero on HTTP/network errors
   local url="$1"
   local hdr=(-H "Accept: application/vnd.github+json")
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
@@ -65,15 +67,20 @@ trim_one_line(){
   tr -d '\r' | tr -d '\n' | sed 's/[[:space:]]\+$//'
 }
 
-# Holt JSON EINER Release. Mit Fallback: stable→pre bzw. pre→stable
-get_release_json(){
-  if [[ -n "$TAG" ]]; then
-    api "https://api.github.com/repos/${REPO}/releases/tags/${TAG}"
-    return
-  fi
+installed_version(){
+  dpkg-query -W -f='${Version}\n' "$APP_NAME" 2>/dev/null || true
+}
 
+# ---------- Release selection ----------
+get_release_json_by_tag(){
+  api "https://api.github.com/repos/${REPO}/releases/tags/${TAG}"
+}
+
+get_release_json_auto(){
   local releases
   releases="$(api "https://api.github.com/repos/${REPO}/releases?per_page=50")"
+
+  # Prefer channel, fallback to the other
   printf '%s' "$releases" | jq -c --arg ch "$CHANNEL" '
     [ .[] | select(.draft==false) ] as $r
     | if $ch=="pre"
@@ -83,18 +90,13 @@ get_release_json(){
   '
 }
 
-# Erwartet JSON EINER Release auf stdin, gibt EXAKT EINE .deb-URL zurück (oder leer)
 pick_deb_from_release(){
-  # netmode assets werden typischerweise als netmode_<ver>_all.deb gebaut
-  jq -r '
+  # stdin: release JSON (single object)
+  jq -r --arg re "$ASSET_REGEX" '
     .assets // []
-    | map(select(.name | test("^netmode_.*_all\\.deb$")))
+    | map(select(.name | test($re)))
     | .[0].browser_download_url // empty
   '
-}
-
-installed_version(){
-  dpkg-query -W -f='${Version}\n' "$APP_NAME" 2>/dev/null || true
 }
 
 # ---------- Start ----------
@@ -109,13 +111,27 @@ else
 fi
 
 info "Ermittle Release aus ${REPO} (${CHANNEL}${TAG:+, tag=$TAG}) ..."
-RELEASE_JSON="$(get_release_json)"
-if [[ -z "$RELEASE_JSON" || "$RELEASE_JSON" == "null" ]]; then
-  err "Keine passende Release gefunden."
+set +e
+if [[ -n "$TAG" ]]; then
+  RELEASE_JSON="$(get_release_json_by_tag 2>/dev/null)"
+  RC=$?
+else
+  RELEASE_JSON="$(get_release_json_auto 2>/dev/null)"
+  RC=$?
+fi
+set -e
+
+if [[ $RC -ne 0 || -z "${RELEASE_JSON:-}" || "${RELEASE_JSON}" == "null" ]]; then
+  err "Keine passende Release gefunden (Repo: ${REPO})."
+  err "Hinweis: Repo-Name prüfen (underscore vs dash) und ggf. GITHUB_TOKEN setzen (private/limits)."
   exit 1
 fi
 
-TAG_NAME="$(printf '%s' "$RELEASE_JSON" | jq -r '.tag_name')"
+TAG_NAME="$(printf '%s' "$RELEASE_JSON" | jq -r '.tag_name // empty')"
+if [[ -z "$TAG_NAME" ]]; then
+  err "Release JSON ohne tag_name."
+  exit 1
+fi
 [[ -z "$TAG" ]] && TAG="$TAG_NAME"
 VER_CLEAN="${TAG#v}"
 
@@ -123,22 +139,23 @@ DEB_URL_RAW="$(printf '%s' "$RELEASE_JSON" | pick_deb_from_release || true)"
 DEB_URL="$(printf '%s' "$DEB_URL_RAW" | trim_one_line)"
 
 if [[ -z "$DEB_URL" ]]; then
-  err "Kein .deb Asset (*_all.deb) in Release ${TAG} gefunden."
+  err "Kein .deb Asset passend zu Regex in Release ${TAG} gefunden."
+  err "Regex: ${ASSET_REGEX}"
+  err "Tipp: Liste Assets: curl -fsS \"https://api.github.com/repos/${REPO}/releases/tags/${TAG}\" | jq -r '.assets[].name'"
   exit 1
 fi
 
 TMPDIR="$(mktemp -d -t netmode-install.XXXXX)"
 trap 'rm -rf "$TMPDIR"' EXIT
-DEB_FILE="${TMPDIR}/${APP_NAME}_${VER_CLEAN}_all.deb"
+DEB_FILE="${TMPDIR}/${APP_NAME}_${VER_CLEAN}.deb"
 
 info "Lade: ${DEB_URL}"
 curl -fL --retry 3 --retry-delay 1 -o "$DEB_FILE" "$DEB_URL"
 
-# Sanity
 dpkg-deb --info "$DEB_FILE" >/dev/null 2>&1 || { err "Ungültiges .deb"; exit 1; }
 
-# Vorhandenen Service sauber stoppen (dpkg/postinst startet neu)
-if systemctl list-units --type=service | grep -q "^${APP_NAME}\.service"; then
+# Stop service if present (postinst will restart)
+if systemctl list-units --type=service 2>/dev/null | grep -q "^${APP_NAME}\.service"; then
   systemctl stop "$APP_NAME" || true
 fi
 
@@ -156,11 +173,12 @@ fi
 ok "Installiert: ${APP_NAME} ${VER_CLEAN}"
 
 systemctl daemon-reload || true
-systemctl enable "$APP_NAME" || true
+systemctl enable "$APP_NAME" >/dev/null 2>&1 || true
 systemctl restart "$APP_NAME" || true
 
 if systemctl is-active --quiet "$APP_NAME"; then
-  ok "Fertig: ${APP_NAME} ${OLD_VER:+${OLD_VER} → }${VER_CLEAN} (service active)"
+  NEW_VER="$(installed_version || echo "$VER_CLEAN")"
+  ok "Fertig: ${APP_NAME} ${OLD_VER:+${OLD_VER} → }${NEW_VER} (service active)"
 else
   err "Service ist nicht active: ${APP_NAME}"
   journalctl -u "$APP_NAME" -n 200 --no-pager -o cat || true
