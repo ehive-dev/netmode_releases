@@ -41,7 +41,7 @@ need_root(){
 need_tools(){
   command -v curl >/dev/null || { apt-get update -y; apt-get install -y curl; }
   command -v dpkg-deb >/dev/null || { apt-get update -y; apt-get install -y dpkg; }
-  command -v ca-certificates >/dev/null 2>&1 || { apt-get update -y; apt-get install -y ca-certificates; }
+  dpkg-query -W -f='${Status}\n' ca-certificates 2>/dev/null | grep -q 'install ok installed' || { apt-get update -y; apt-get install -y ca-certificates; }
 }
 
 installed_version(){
@@ -97,10 +97,15 @@ asset_exists(){
 }
 
 resolve_deb_url(){
-  local tag="$1" ver="${tag#v}" prefix arch url
+  local tag="$1"
+  local ver="${tag#v}"
+  local prefix arch url name found
+  local candidates=()
   for prefix in $ASSET_PREFIXES; do
     for arch in $ARCH_ORDER; do
-      url="https://github.com/${REPO}/releases/download/${tag}/${prefix}_${ver}_${arch}.deb"
+      name="${prefix}_${ver}_${arch}.deb"
+      candidates+=("$name")
+      url="https://github.com/${REPO}/releases/download/${tag}/${name}"
       if asset_exists "$url"; then
         printf '%s\n' "$url"
         return 0
@@ -109,14 +114,16 @@ resolve_deb_url(){
   done
 
   command -v jq >/dev/null || { apt-get update -y; apt-get install -y jq; }
-  api "https://api.github.com/repos/${REPO}/releases/tags/${tag}" |
-    jq -r --arg prefixes "$ASSET_PREFIXES" --arg arches "$ARCH_ORDER" '
-      ($prefixes | split(" ")) as $p
-      | ($arches | split(" ")) as $a
-      | .assets // []
-      | map(select(.name as $n | any($p[]; . as $pre | any($a[]; $n == ($pre + "_" + (.tag_name // "" | ltrimstr("v")) + "_" + . + ".deb")))))
-      | .[0].browser_download_url // empty
-    ' 2>/dev/null || true
+  local json
+  json="$(api "https://api.github.com/repos/${REPO}/releases/tags/${tag}" 2>/dev/null || true)"
+  [[ -n "$json" ]] || return 0
+  for name in "${candidates[@]}"; do
+    found="$(printf '%s' "$json" | jq -r --arg name "$name" '.assets[]? | select(.name == $name) | .browser_download_url' | head -n1)"
+    if [[ -n "$found" ]]; then
+      printf '%s\n' "$found"
+      return 0
+    fi
+  done
 }
 
 stop_service(){
