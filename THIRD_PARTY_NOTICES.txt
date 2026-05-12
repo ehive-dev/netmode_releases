@@ -16,12 +16,12 @@ Project maintainers should add the concrete list of included third-party compone
 
 Deutsche Fassung
 
-Diese Software kann Open-Source-Komponenten Dritter enthalten oder zusammen mit solchen Komponenten ausgeliefert werden. Diese Komponenten gehoeren nicht ehive und unterliegen weiterhin ihren jeweiligen Lizenzbedingungen.
+Diese Software kann Open-Source-Komponenten Dritter enthalten oder zusammen mit solchen Komponenten ausgeliefert werden. Diese Komponenten gehören nicht ehive und unterliegen weiterhin ihren jeweiligen Lizenzbedingungen.
 
-Die ehive Non-Commercial Software License gilt nur fuer Software und Materialien, die ehive gehoeren. Sie ersetzt, beschraenkt oder veraendert die Lizenzen von Open-Source-Komponenten Dritter nicht.
+Die ehive Non-Commercial Software License gilt nur für Software und Materialien, die ehive gehören. Sie ersetzt, beschränkt oder verändert die Lizenzen von Open-Source-Komponenten Dritter nicht.
 
-Soweit erforderlich, werden Lizenztexte und Hinweise zu Komponenten Dritter im Release-Paket, Installer, in Abhaengigkeits-Metadaten, in der Anwendungsdokumentation oder in sonstigen Begleitdateien mitgeliefert.
+Soweit erforderlich, werden Lizenztexte und Hinweise zu Komponenten Dritter im Release-Paket, Installer, in Abhängigkeits-Metadaten, in der Anwendungsdokumentation oder in sonstigen Begleitdateien mitgeliefert.
 
-Falls eine Komponente Dritter in dieser repositoryweiten Hinweisdatei nicht aufgefuehrt ist, gilt ihre urspruengliche Lizenz weiterhin.
+Falls eine Komponente Dritter in dieser repositoryweiten Hinweisdatei nicht aufgeführt ist, gilt ihre ursprüngliche Lizenz weiterhin.
 
-Projektverantwortliche sollten die konkrete Liste der enthaltenen Komponenten Dritter und deren Lizenzen hier ergaenzen oder eine generierte Hinweisdatei mit jedem Release-Paket ausliefern.
+Projektverantwortliche sollten die konkrete Liste der enthaltenen Komponenten Dritter und deren Lizenzen hier ergänzen oder eine generierte Hinweisdatei mit jedem Release-Paket ausliefern.
