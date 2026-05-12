@@ -1,0 +1,27 @@
+Third-Party Notices
+Version 1.0 - 2026-05-12
+
+English Version
+
+This software may include or be distributed with third-party open-source components.
+Those components are not owned by ehive and remain subject to their own license terms.
+
+The ehive Non-Commercial Software License applies only to software and materials owned by ehive. It does not replace, limit, or change the licenses of third-party open-source components.
+
+Where required, third-party license texts and notices are included in the release package, installer, dependency metadata, application documentation, or other accompanying files.
+
+If a third-party component is missing from this repository-level notice file, the original license of that component still applies.
+
+Project maintainers should add the concrete list of included third-party components and licenses here or ship a generated notice file with each release package.
+
+Deutsche Fassung
+
+Diese Software kann Open-Source-Komponenten Dritter enthalten oder zusammen mit solchen Komponenten ausgeliefert werden. Diese Komponenten gehoeren nicht ehive und unterliegen weiterhin ihren jeweiligen Lizenzbedingungen.
+
+Die ehive Non-Commercial Software License gilt nur fuer Software und Materialien, die ehive gehoeren. Sie ersetzt, beschraenkt oder veraendert die Lizenzen von Open-Source-Komponenten Dritter nicht.
+
+Soweit erforderlich, werden Lizenztexte und Hinweise zu Komponenten Dritter im Release-Paket, Installer, in Abhaengigkeits-Metadaten, in der Anwendungsdokumentation oder in sonstigen Begleitdateien mitgeliefert.
+
+Falls eine Komponente Dritter in dieser repositoryweiten Hinweisdatei nicht aufgefuehrt ist, gilt ihre urspruengliche Lizenz weiterhin.
+
+Projektverantwortliche sollten die konkrete Liste der enthaltenen Komponenten Dritter und deren Lizenzen hier ergaenzen oder eine generierte Hinweisdatei mit jedem Release-Paket ausliefern.
