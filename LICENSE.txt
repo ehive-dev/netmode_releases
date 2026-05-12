@@ -6,30 +6,30 @@ Copyright (c) 2026 ehive. All rights reserved.
 Deutsche Fassung
 
 1. Nutzungserlaubnis
-Diese Software darf kostenlos fuer private oder sonstige nicht-kommerzielle Zwecke heruntergeladen, installiert, ausgefuehrt und genutzt werden.
+Diese Software darf kostenlos für private oder sonstige nicht-kommerzielle Zwecke heruntergeladen, installiert, ausgeführt und genutzt werden.
 
 2. Kommerzielle Nutzung
 Eine kommerzielle Nutzung ist ohne vorherige schriftliche Zustimmung von ehive nicht erlaubt.
 
-Als kommerzielle Nutzung gilt insbesondere jede Nutzung, die auf wirtschaftlichen Vorteil, Einnahmen, kostenpflichtige Leistungen, professionelle Betriebsablaeufe oder Geschaeftsprozesse gerichtet ist. Dazu gehoert insbesondere:
-- Nutzung im Rahmen eines Unternehmens, Gewerbes, freien Berufs, Dienstleistungsangebots oder einer sonstigen kommerziellen Taetigkeit
+Als kommerzielle Nutzung gilt insbesondere jede Nutzung, die auf wirtschaftlichen Vorteil, Einnahmen, kostenpflichtige Leistungen, professionelle Betriebsabläufe oder Geschäftsprozesse gerichtet ist. Dazu gehört insbesondere:
+- Nutzung im Rahmen eines Unternehmens, Gewerbes, freien Berufs, Dienstleistungsangebots oder einer sonstigen kommerziellen Tätigkeit
 - Nutzung als Teil eines kostenpflichtigen Produkts, einer kostenpflichtigen Dienstleistung, Installation, Plattform, Wartung, Hosting- oder Support-Leistung
-- Weiterverkauf, Weitergabe, Unterlizenzierung, Vermietung, Verpachtung oder Hosting fuer Dritte
-- Nutzung zur Gewinnerzielung, zur Einsparung bezahlter Arbeit oder zur Unterstuetzung kommerzieller Ablaeufe
+- Weiterverkauf, Weitergabe, Unterlizenzierung, Vermietung, Verpachtung oder Hosting für Dritte
+- Nutzung zur Gewinnerzielung, zur Einsparung bezahlter Arbeit oder zur Unterstützung kommerzieller Abläufe
 
-3. Einschraenkungen
-Ohne ausdrueckliche schriftliche Zustimmung von ehive ist es nicht erlaubt:
-- die Software zu veraendern, zu uebersetzen, zurueckzuentwickeln, zu dekompilieren oder abgeleitete Werke zu erstellen
+3. Einschränkungen
+Ohne ausdrückliche schriftliche Zustimmung von ehive ist es nicht erlaubt:
+- die Software zu verändern, zu übersetzen, zurückzuentwickeln, zu dekompilieren oder abgeleitete Werke zu erstellen
 - Hinweise auf Urheberrecht, Lizenz, Marken oder Herkunft zu entfernen
-- veraenderte Versionen der Software zu verbreiten
+- veränderte Versionen der Software zu verbreiten
 
 4. Open-Source-Komponenten Dritter
-Diese Lizenz gilt nur fuer Software und Materialien, die ehive gehoeren. Enthaltene Open-Source-Komponenten Dritter unterliegen weiterhin ihren jeweiligen Lizenzen. Siehe THIRD_PARTY_NOTICES.txt und die mit dem jeweiligen Release ausgelieferten Hinweise.
+Diese Lizenz gilt nur für Software und Materialien, die ehive gehören. Enthaltene Open-Source-Komponenten Dritter unterliegen weiterhin ihren jeweiligen Lizenzen. Siehe THIRD_PARTY_NOTICES.txt und die mit dem jeweiligen Release ausgelieferten Hinweise.
 
-5. Keine Gewaehrleistung
-Diese Software wird ohne Gewaehrleistung bereitgestellt, soweit gesetzlich zulaessig.
+5. Keine Gewährleistung
+Diese Software wird ohne Gewährleistung bereitgestellt, soweit gesetzlich zulässig.
 
-Bei Abweichungen zwischen der deutschen und der englischen Fassung ist die deutsche Fassung massgeblich.
+Bei Abweichungen zwischen der deutschen und der englischen Fassung ist die deutsche Fassung maßgeblich.
 
 English Version
 
